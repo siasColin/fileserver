@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>文件管理</title>
+    <link rel="stylesheet" th:href="@{/plugin/layui/css/layui.css}" media="all">
+    <style>
+        body{margin: 10px;}
+    </style>
+</head>
+<body>
+<div class="demoTable">
+    文件名称：
+    <div class="layui-inline">
+        <input class="layui-input" name="name" id="name" autocomplete="off">
+    </div>
+    <button class="layui-btn" onclick="search();" id="findBy">搜索</button>
+    <button type="reset" class="layui-btn" id="chongzhi">重置</button>
+</div>
+
+
+<table class="layui-hide" id="filelist" lay-filter="filetable"></table>
+
+<script type="text/html" id="info_toolbar">
+    <div class="layui-btn-container">
+        <button type="button" class="layui-btn" id="uploadFile" lay-event="upload"><i class="layui-icon"></i>单文件上传</button>
+        <button type="button" class="layui-btn" id="multipleUploadFile" lay-event="multipleUpload"><i class="layui-icon"></i>多文件上传</button>
+        <button type="button" class="layui-btn" id="delete" lay-event="delete">
+            <i class="layui-icon">&#xe640;</i>删除文件
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="barFilelist">
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+</script>
+
+<script th:src="@{/js/jquery-3.4.1.min.js}" src="../static/js/jquery-3.4.1.min.js"></script>
+<script th:src="@{/js/common.js}"></script>
+<script th:src="@{/plugin/layui/layui.js}"></script>
+<script th:src="@{/js/fileList.js}"></script>
+<script>
+    layui.use('form', function(){
+        var form = layui.form;
+        form.render();
+    });
+</script>
+</body>
+</html>

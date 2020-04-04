@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+	<head>
+		<meta charset="utf-8" />
+		<title>文件管理</title>
+		<link th:href="@{/plugin/bootstrap/css/bootstrap.css}" href="../static/bootstrap/css/bootstrap.css" rel="stylesheet" />
+		<link rel="stylesheet" type="text/css" th:href="@{/css/index.css}" href="../static/css/index.css"/>
+		<link rel="stylesheet" th:href="@{/css/ace.min.css}" href="../static/assets/css/ace.min.css" />
+	</head>
+	<body>
+		<div class="navbar navbar-default" id="navbar">
+			<div class="navbar-container" id="navbar-container">
+				<div class="contentBigBox">
+					<div id="headerNav">
+                        <h1>
+                            <img th:src="@{/images/logo.png}" src="logo.png" style="width: 40px;margin-top: 0px;">
+							<span style="display: inline-block;vertical-align: middle;font-size: 26px;font-family: '时尚中黑简体';line-height: 58px;color: white;">基于mongodb的文件管理系统</span>
+                        </h1>
+					</div>
+				</div>
+			</div><!-- /.container -->
+		</div>
+
+		<div class="main-container" id="main-container">
+			<div class="main-container-inner">
+				<a class="menu-toggler" id="menu-toggler" href="javascript:;">
+					<span class="menu-text"></span>
+				</a>
+				<div class="sidebar menu-hide" id="sidebar" style="display: none">
+					<ul class="nav nav-list" id="secondmenu">
+
+					</ul><!-- /.nav-list -->
+
+					<div class="sidebar-collapse" id="sidebar-collapse">
+						<i class="icon-double-angle-left" data-icon1="icon-double-angle-left" data-icon2="icon-double-angle-right"></i>
+					</div>
+				</div>
+
+				<div class="main-content">
+					<div class="page-content" style="padding:0;" id="iframeBox">
+						<iframe id="rightframe" name="rightframe" th:src="@{/listpage}" src="" frameborder="0" style="width:100%;height:100%;"></iframe>
+					</div><!-- /.page-content -->
+				</div><!-- /.main-content -->
+
+			</div><!-- /.main-container-inner -->
+		</div><!-- /.main-container -->
+		
+		
+
+		<script th:src="@{/js/jquery-3.4.1.min.js}" src="../static/js/jquery-3.4.1.min.js"></script>
+		<script type="text/javascript">
+			$('#iframeBox').css('height',$(window).height()-55);   // iframe高度
+			
+			$(window).resize(function () {
+                $('#iframeBox').css('height',$(window).height()-55);   // iframe高度
+            });
+		</script>
+</body>
+</html>
+
