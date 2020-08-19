@@ -3,7 +3,11 @@ package com.colin.springboot.fileserver.service;
 
 import com.colin.springboot.fileserver.model.File;
 import com.colin.springboot.fileserver.model.LayUI;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.gridfs.GridFSDBFile;
+import org.bson.types.ObjectId;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +25,15 @@ public interface FileService {
 	 * @return
 	 */
 	File saveFile(File file);
+
+	/**
+	 * 保存大文件
+	 * @param in
+	 * @param fileName
+	 * @param contentType
+	 * @return
+	 */
+	ObjectId saveBigFile(InputStream in , String fileName, String contentType);
 	
 	/**
 	 * 删除文件
@@ -50,4 +63,17 @@ public interface FileService {
 	 * @return
 	 */
     LayUI listFilesByNameWithPage(Map<String, Object> paramMap);
+
+	/**
+	 * 根据id查找大文件
+	 * @param id
+	 * @return
+	 */
+	GridFSFile bigFileDownload(String id);
+
+	/**
+	 * 删除大文件
+	 * @param id
+	 */
+	void removeBigFile(String id);
 }

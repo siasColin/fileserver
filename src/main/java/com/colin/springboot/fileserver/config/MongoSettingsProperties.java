@@ -12,8 +12,8 @@ import java.util.List;
  * @Date: 2020-4-4
  * @Description:
  */
-@Component
-@ConfigurationProperties(prefix = "mongodb")
+//@Component
+//@ConfigurationProperties(prefix = "mongodb")
 public class MongoSettingsProperties {
     private String database = "filedb";
     private List<String> address = Arrays.asList("localhost:27017");

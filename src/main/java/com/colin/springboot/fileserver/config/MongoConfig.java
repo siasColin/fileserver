@@ -19,8 +19,8 @@ import java.util.List;
  * @Date: 2020-4-4
  * @Description:
  */
-@Configuration
-@Slf4j
+//@Configuration
+//@Slf4j
 public class MongoConfig {
     //覆盖默认的MongoDbFacotry
     @Bean

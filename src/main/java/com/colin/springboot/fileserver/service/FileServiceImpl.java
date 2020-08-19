@@ -3,14 +3,21 @@ package com.colin.springboot.fileserver.service;
 import com.colin.springboot.fileserver.model.File;
 import com.colin.springboot.fileserver.model.LayUI;
 import com.colin.springboot.fileserver.repository.FileRepository;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.gridfs.GridFSDBFile;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,9 +35,19 @@ public class FileServiceImpl implements FileService {
 	@Autowired
 	public FileRepository fileRepository;
 
+	// 获得SpringBoot提供的mongodb的GridFS对象,处理大文件（超过16M）
+	@Autowired
+	private GridFsTemplate gridFsTemplate;
+
 	@Override
 	public File saveFile(File file) {
 		return fileRepository.save(file);
+	}
+
+	public ObjectId saveBigFile(InputStream in ,String fileName,String contentType){
+		ObjectId objectId = gridFsTemplate.store(in, fileName, contentType);
+		System.out.println("保存成功，objectId:"+objectId);
+		return objectId;
 	}
 
 	@Override
@@ -78,5 +95,17 @@ public class FileServiceImpl implements FileService {
 			layUI.setCount(page.getTotalElements());
 		}
 		return layUI;
+	}
+
+	@Override
+	public GridFSFile bigFileDownload(String id) {
+		Query query = Query.query(Criteria.where("_id").is(id));
+		return gridFsTemplate.findOne(query);
+	}
+
+	@Override
+	public void removeBigFile(String id) {
+		Query query = Query.query(Criteria.where("_id").is(id));
+		gridFsTemplate.delete(query);
 	}
 }

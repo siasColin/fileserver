@@ -4,9 +4,18 @@ import com.colin.springboot.fileserver.model.File;
 import com.colin.springboot.fileserver.model.LayUI;
 import com.colin.springboot.fileserver.service.FileService;
 import com.colin.springboot.fileserver.util.MD5Util;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.GridFSDownloadStream;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.gridfs.GridFSDBFile;
 import org.bson.types.Binary;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +26,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
@@ -40,6 +53,13 @@ public class FileController {
 
 	@Value("${server.port}")
 	private String serverPort;
+
+	@Autowired
+	private MongoTemplate mongoTemplate;
+
+	@Autowired
+	private GridFSBucket gridFSBucket;
+
 
 	@RequestMapping(value = "/")
 	public String index(Model model) {
@@ -197,13 +217,24 @@ public class FileController {
 	public Object singleUpload(@RequestParam("file") MultipartFile file) {
 		Map<String,Object> resultMap = new HashMap<>();
 		try {
-			File f = new File(file.getOriginalFilename(), file.getContentType(), file.getSize(),
-					new Binary(file.getBytes()));
-			f.setMd5(MD5Util.getMD5(file.getInputStream()));
-			File returnFile = fileService.saveFile(f);
-			resultMap.put("returnCode",0);
-			resultMap.put("returnMessage","上传成功！");
-			resultMap.put("id",returnFile.getId());
+			if(file.getSize() > 16777216){
+				ObjectId objectId = fileService.saveBigFile(file.getInputStream(), file.getOriginalFilename(), file.getContentType());
+				String downLoadUrl = "http://" + serverAddress + ":" + serverPort + "/bigFileDownload/" + objectId.toString();
+				resultMap.put("returnCode",0);
+				resultMap.put("returnMessage","上传成功！");
+				resultMap.put("downLoadUrl",downLoadUrl);
+				resultMap.put("id",objectId.toString());
+			}else{
+				File f = new File(file.getOriginalFilename(), file.getContentType(), file.getSize(),
+						new Binary(file.getBytes()));
+				f.setMd5(MD5Util.getMD5(file.getInputStream()));
+				File returnFile = fileService.saveFile(f);
+				String downLoadUrl = "http://" + serverAddress + ":" + serverPort + "/files/" + returnFile.getId();
+				resultMap.put("returnCode",0);
+				resultMap.put("returnMessage","上传成功！");
+				resultMap.put("downLoadUrl",downLoadUrl);
+				resultMap.put("id",returnFile.getId());
+			}
 			return resultMap;
 
 		} catch (IOException | NoSuchAlgorithmException ex) {
@@ -213,6 +244,66 @@ public class FileController {
 			return resultMap;
 		}
 
+	}
+
+	/**
+	 * 下载大文件 大于 16M的文件
+	 *
+	 * @param id
+	 * @return
+	 */
+	@GetMapping("bigFileDownload/{id}")
+	@ResponseBody
+	public void bigFileDownload(@PathVariable String id, HttpServletResponse response) {
+		InputStream inputStream = null;
+		OutputStream out = null;
+		try{
+			GridFSFile gfsfile = fileService.bigFileDownload(id);
+			if(gfsfile != null && gfsfile.getLength() > 0){
+				//打开下载流对象
+				GridFSDownloadStream gridFSDownloadStream =
+						gridFSBucket.openDownloadStream(gfsfile.getObjectId());
+				//创建gridFsResource，用于获取流对象
+				GridFsResource gridFsResource = new GridFsResource(gfsfile, gridFSDownloadStream);
+				//获取流中的数据
+				inputStream = gridFsResource.getInputStream();
+				String filename = gfsfile.getFilename();
+				//解决乱码
+				filename = URLEncoder.encode(filename, "UTF-8");
+				response.reset();
+				// 设置文件名称
+				response.setHeader("content-disposition", "attachment;fileName=\""+filename+"\"");
+				response.setContentType("application/octet-stream");
+				response.setHeader("content-type", "application/octet-stream");
+				response.setHeader("content-length", gfsfile.getLength()+"");
+				int len = 0;
+				byte buffer[]=new byte[1024];
+				out = response.getOutputStream();
+				while((len = inputStream.read(buffer))>0){
+					out.write(buffer, 0, len);
+				}
+			}
+		}catch (Exception e){
+			e.printStackTrace();
+		}finally {
+			if (inputStream != null){
+				try {
+					inputStream.close();
+					inputStream = null;
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+			}
+			if(out != null){
+				try {
+					out.close();
+					out = null;
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	/**
@@ -263,6 +354,29 @@ public class FileController {
 		try {
 
 			fileService.removeFile(id);
+			resultMap.put("returnCode",0);
+			resultMap.put("returnMessage","删除成功！");
+			return resultMap;
+		} catch (Exception e) {
+			resultMap.put("returnCode",-1);
+			resultMap.put("returnMessage","删除失败！");
+			return resultMap;
+		}
+	}
+
+	/**
+	 * 删除文件
+	 *
+	 * @param id
+	 * @return
+	 */
+	@DeleteMapping("/bigFile/{id}")
+	@ResponseBody
+	public Object deleteBigFile(@PathVariable String id) {
+		Map<String,Object> resultMap = new HashMap<>();
+		try {
+
+			fileService.removeBigFile(id);
 			resultMap.put("returnCode",0);
 			resultMap.put("returnMessage","删除成功！");
 			return resultMap;
