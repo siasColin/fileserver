@@ -98,11 +98,57 @@ public class FileController {
 	@GetMapping("listFiles")
 	@ResponseBody
 	public LayUI listFilesByNameWithPage(HttpServletRequest request, @RequestParam Map<String,Object> paramMap) {
-		LayUI result = new LayUI();
-		Integer pageNum = Integer.parseInt(request.getParameter("page"));
-		Integer pageSize = Integer.parseInt(request.getParameter("limit"));
-		result = fileService.listFilesByNameWithPage(paramMap);
+		LayUI result = fileService.listFilesByNameWithPage(paramMap);
 		return result;
+	}
+
+	/**
+	 * 带条件分页查询大文件
+	 *
+	 * @param paramMap
+	 * @return
+	 */
+	@GetMapping("listBigFiles")
+	@ResponseBody
+	public LayUI listBigFilesByNameWithPage(HttpServletRequest request, @RequestParam Map<String,Object> paramMap) {
+		LayUI result = fileService.bigFilesByNameWithPage(paramMap);
+		return result;
+	}
+
+	/**
+	 * 检查文件是否存在
+	 * @return
+	 */
+	@GetMapping("checkExist/{id}")
+	@ResponseBody
+	public Object checkExist(@PathVariable String id){
+		Map<String,Object> resultMap = new HashMap<String,Object>();
+		try{
+			Optional<File> file = fileService.getFileById(id);
+			if (file.isPresent()) { //检索到文件
+				resultMap.put("returnCode",0);
+				resultMap.put("returnMessage","检索完成");
+				resultMap.put("exist",1);//0 不存在，1存在
+				resultMap.put("fileType",0);//0 小文件（小于16M的），1大文件（大于16M的）
+			}else{//文件不存在，再检索是否是大文件（超过16M）
+				GridFSFile gfsfile = fileService.bigFileDownload(id);
+				if(gfsfile != null && gfsfile.getLength() > 0){//文件存在，大文件
+					resultMap.put("returnCode",0);
+					resultMap.put("returnMessage","检索完成");
+					resultMap.put("exist",1);//0 不存在，1存在
+					resultMap.put("fileType",1);//0 小文件（小于16M的），1大文件（大于16M的）
+				}else{//文件不存在
+					resultMap.put("returnCode",0);
+					resultMap.put("returnMessage","检索完成");
+					resultMap.put("exist",0);//0 不存在，1存在
+				}
+			}
+		}catch (Exception e){
+			resultMap.put("returnCode",-1);
+			resultMap.put("returnMessage","检索失败");
+			e.printStackTrace();
+		}
+		return resultMap;
 	}
 
 	/**
@@ -219,20 +265,22 @@ public class FileController {
 		try {
 			if(file.getSize() > 16777216){
 				ObjectId objectId = fileService.saveBigFile(file.getInputStream(), file.getOriginalFilename(), file.getContentType());
-				String downLoadUrl = "http://" + serverAddress + ":" + serverPort + "/bigFileDownload/" + objectId.toString();
+//				String downLoadUrl = "http://" + serverAddress + ":" + serverPort + "/bigFileDownload/" + objectId.toString();
 				resultMap.put("returnCode",0);
 				resultMap.put("returnMessage","上传成功！");
-				resultMap.put("downLoadUrl",downLoadUrl);
+//				resultMap.put("downLoadUrl",downLoadUrl);
+				resultMap.put("fileType",1);//0 小文件（小于16M的），1大文件（大于16M的）
 				resultMap.put("id",objectId.toString());
 			}else{
 				File f = new File(file.getOriginalFilename(), file.getContentType(), file.getSize(),
 						new Binary(file.getBytes()));
 				f.setMd5(MD5Util.getMD5(file.getInputStream()));
 				File returnFile = fileService.saveFile(f);
-				String downLoadUrl = "http://" + serverAddress + ":" + serverPort + "/files/" + returnFile.getId();
+//				String downLoadUrl = "http://" + serverAddress + ":" + serverPort + "/files/" + returnFile.getId();
 				resultMap.put("returnCode",0);
 				resultMap.put("returnMessage","上传成功！");
-				resultMap.put("downLoadUrl",downLoadUrl);
+//				resultMap.put("downLoadUrl",downLoadUrl);
+				resultMap.put("fileType",0);//0 小文件（小于16M的），1大文件（大于16M的）
 				resultMap.put("id",returnFile.getId());
 			}
 			return resultMap;
@@ -317,34 +365,47 @@ public class FileController {
 	public Object multipleUpload(@RequestParam("files") MultipartFile [] files) {
 		Map<String,Object> resultMap = new HashMap<>();
 		try {
-			List<String> idList = new ArrayList<String>();
+			List<Map<String,Object>> resultList = new ArrayList<>();
 			for (MultipartFile file : files) {
-				File f = new File(file.getOriginalFilename(), file.getContentType(), file.getSize(),
-						new Binary(file.getBytes()));
-				f.setMd5(MD5Util.getMD5(file.getInputStream()));
-				File returnFile = fileService.saveFile(f);
-				resultMap.put("returnCode",0);
-				resultMap.put("returnMessage","上传成功！");
-				idList.add(returnFile.getId());
+				Map<String,Object> map = new HashMap<>();
+				try{
+					if(file.getSize() > 16777216){
+						ObjectId objectId = fileService.saveBigFile(file.getInputStream(), file.getOriginalFilename(), file.getContentType());
+						map.put("returnCode",0);
+						map.put("returnMessage","上传成功！");
+						map.put("fileType",1);//0 小文件（小于16M的），1大文件（大于16M的）
+						map.put("id",objectId.toString());
+					}else{
+						File f = new File(file.getOriginalFilename(), file.getContentType(), file.getSize(),
+								new Binary(file.getBytes()));
+						f.setMd5(MD5Util.getMD5(file.getInputStream()));
+						File returnFile = fileService.saveFile(f);
+						map.put("returnCode",0);
+						map.put("returnMessage","上传成功！");
+						map.put("fileType",0);//0 小文件（小于16M的），1大文件（大于16M的）
+						map.put("id",returnFile.getId());
+					}
+				}catch (Exception e){
+					map.put("returnCode",-1);
+					map.put("returnMessage","上传失败！");
+					e.printStackTrace();
+				}
+				resultList.add(map);
 			}
 			resultMap.put("returnCode",0);
 			resultMap.put("returnMessage","上传成功！");
-			resultMap.put("id",idList);
-			return resultMap;
-
-		} catch (IOException | NoSuchAlgorithmException ex) {
-			ex.printStackTrace();
+			resultMap.put("reusltList",resultList);
+		} catch (Exception e) {
+			e.printStackTrace();
 			resultMap.put("returnCode",-1);
 			resultMap.put("returnMessage","上传失败！");
-			return resultMap;
 		}
-
+		return resultMap;
 	}
 
 	/**
 	 * 删除文件
 	 * 
-	 * @param id
 	 * @return
 	 */
 	@DeleteMapping("/file/{id}")

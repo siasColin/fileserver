@@ -64,6 +64,8 @@ public interface FileService {
 	 */
     LayUI listFilesByNameWithPage(Map<String, Object> paramMap);
 
+	LayUI bigFilesByNameWithPage(Map<String, Object> paramMap);
+
 	/**
 	 * 根据id查找大文件
 	 * @param id

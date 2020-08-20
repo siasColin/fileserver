@@ -1,4 +1,5 @@
 var fileTable;
+var bigfileTable;
 $(function(){
     layui.use([ 'upload', 'table','form'], function(){
         var upload = layui.upload
@@ -8,11 +9,12 @@ $(function(){
         fileTable = table.render({
             id: 'filetable'
             ,elem: '#filelist'
-            ,height: "full-135"
-            ,limit:15
+            ,height: "350"
+            ,limit:5
+            ,limits:[5,10,20,30,50]
             ,method:'GET'
             ,url: Common.ctxPath+'listFiles' //数据接口
-            ,title: '文件信息表'
+            ,title: '小文件列表'
             ,page: true //开启分页
             ,toolbar: '#info_toolbar' //开启工具栏，此处显示默认图标，可以自定义模板，详见文档
             ,defaultToolbar: ['filter', 'print']
@@ -22,9 +24,35 @@ $(function(){
                 ,{field: 'name', title: '文件名称',templet: function(d){
                     return '<a href="'+Common.ctxPath+'files/'+d.id+'" >'+d.name+'</a>';
                 }}
-                ,{field: 'contentType', title: '文件类型'}
-                ,{field: 'size', title: '文件大小'}
+                // ,{field: 'contentType', title: '文件类型'}
+                ,{field: 'size', title: '文件大小',templet: function(d){
+                        return '<span>'+Math.ceil(d.size/1024)+' KB</span>'
+                 }}
                 ,{field: 'uploadDate', title: '上传时间',templet: "<div>{{layui.util.toDateString(d.uploadDate, 'yyyy-MM-dd HH:mm:ss')}}</div>"}
+                ,{fixed: 'right',  align:'center', toolbar: '#barFilelist',width:130}
+            ]]
+        });
+
+        bigfileTable = table.render({
+            id: 'bigfiletable'
+            ,elem: '#bigfilelist'
+            ,height: "350"
+            ,limit:5
+            ,limits:[5,10,20,30,50]
+            ,method:'GET'
+            ,url: Common.ctxPath+'listBigFiles' //数据接口
+            ,title: '大文件列表'
+            ,page: true //开启分页
+            ,defaultToolbar: ['filter', 'print']
+            ,totalRow: false //开启合计行
+            ,cols: [[ //表头
+                {field: 'fileName', title: '文件名称',templet: function(d){
+                    return '<a href="'+Common.ctxPath+'bigFileDownload/'+d.fileId+'" >'+d.fileName+'</a>';
+                }}
+                ,{field: 'fileSize', title: '文件大小',templet: function(d){
+                        return '<span>'+d.fileSize+' KB</span>'
+                }}
+                ,{field: 'uploadDate', title: '上传时间',templet: "<div>{{layui.util.toDateString(d.uploadTime, 'yyyy-MM-dd HH:mm:ss')}}</div>"}
                 ,{fixed: 'right',  align:'center', toolbar: '#barFilelist',width:130}
             ]]
         });
@@ -32,8 +60,7 @@ $(function(){
         table.on('tool(filetable)', function(obj){
             var data = obj.data //获得当前行数据
                 ,layEvent = obj.event; //获得 lay-event 对应的值
-            if(layEvent === 'detail'){
-            } else if(layEvent === 'del'){
+            if(layEvent === 'del'){
                 Common.openConfirm("确定删除吗?",function () {
                     $.ajax({
                         url: Common.ctxPath+"file/" + data.id,
@@ -41,7 +68,31 @@ $(function(){
                         success:function(res){
                             if(res.returnCode == '0'){//成功
                                 Common.success(res.returnMessage);
-                                search();
+                                fileSearch();
+                            }else{
+                                Common.info(res.returnMessage);
+                            }
+                        },
+                        error:function(){
+                            Common.error("删除失败!")
+                        }
+
+                    });
+                });
+            }
+        });
+        table.on('tool(bigfiletable)', function(obj){
+            var data = obj.data //获得当前行数据
+                ,layEvent = obj.event; //获得 lay-event 对应的值
+            if(layEvent === 'del'){
+                Common.openConfirm("确定删除吗?",function () {
+                    $.ajax({
+                        url: Common.ctxPath+"bigFile/" + data.fileId,
+                        type: 'delete',
+                        success:function(res){
+                            if(res.returnCode == '0'){//成功
+                                Common.success(res.returnMessage);
+                                bigFileSearch();
                             }else{
                                 Common.info(res.returnMessage);
                             }
@@ -78,7 +129,7 @@ $(function(){
                                 success:function(res){
                                     if(res.returnCode == '0'){//成功
                                         Common.success(res.returnMessage);
-                                        search();
+                                        fileSearch();
                                     }else{
                                         Common.info(res.returnMessage);
                                     }
@@ -97,6 +148,11 @@ $(function(){
     });
 })
 function search(){
+    fileSearch();
+    bigFileSearch();
+}
+
+function fileSearch(){
     var name = $('#name');
     fileTable.reload({
         page: {
@@ -109,6 +165,17 @@ function search(){
     layui.use([ 'upload'], function() {
         var upload = layui.upload
         uploadInit(upload);
+    });
+}
+function bigFileSearch() {
+    var name = $('#name');
+    bigfileTable.reload({
+        page: {
+            curr: 1 //重新从第 1 页开始
+        }
+        ,where: {
+            name: name.val()
+        }
     });
 }
 
